@@ -4,24 +4,55 @@ const COLLECTION_NAME = "reports";
 
 async function findReport(query) {
   let mongoClient;
-  let document = null;
+  let report = null;
 
   try {
     mongoClient = await connectToCluster(process.env.DB_URI);
     const db = mongoClient.db(process.env.DB);
     const collection = db.collection(COLLECTION_NAME);
 
-    document = await collection.findOne(query);
+    report = await collection.findOne(query);
   } catch (e) {
     console.error(e);
   } finally {
     await mongoClient.close();
 
-    return document;
+    return report;
   }
 }
 
-async function addReport(searle, austin, distribution, expression, sentiment) {
+async function findReports(query) {
+  let mongoClient;
+  let reports = null;
+
+  try {
+    mongoClient = await connectToCluster(process.env.DB_URI);
+    const db = mongoClient.db(process.env.DB);
+    const collection = db.collection(COLLECTION_NAME);
+
+    reports = collection.find(query);
+    reports = await reports.toArray();
+  } catch (e) {
+    reports = null;
+    console.error(e);
+  } finally {
+    await mongoClient.close();
+
+    return reports;
+  }
+}
+
+async function insertReport(
+  searle,
+  austin,
+  distribution,
+  expression,
+  sentiment,
+  date,
+  groupId,
+  begin,
+  end
+) {
   let mongoClient;
 
   try {
@@ -35,6 +66,10 @@ async function addReport(searle, austin, distribution, expression, sentiment) {
       distribution,
       expression,
       sentiment,
+      date,
+      groupId,
+      begin,
+      end,
     });
   } catch (e) {
     console.error(e);
@@ -43,7 +78,7 @@ async function addReport(searle, austin, distribution, expression, sentiment) {
   }
 }
 
-async function deleteAllReports() {
+async function deleteReports(groupId, begin, end) {
   let mongoClient;
 
   try {
@@ -51,7 +86,7 @@ async function deleteAllReports() {
     const db = mongoClient.db(process.env.DB);
     const collection = db.collection(COLLECTION_NAME);
 
-    await collection.deleteMany({});
+    await collection.deleteMany({ groupId, begin, end });
   } catch (e) {
     console.error(e);
   } finally {
@@ -59,6 +94,11 @@ async function deleteAllReports() {
   }
 }
 
-const reportCollection = { findReport, addReport, deleteAllReports };
+const reportCollection = {
+  findReport,
+  findReports,
+  insertReport,
+  deleteReports,
+};
 
 module.exports = reportCollection;

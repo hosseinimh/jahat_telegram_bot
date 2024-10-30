@@ -2,23 +2,53 @@ const { connectToCluster } = require("../DbService");
 
 const COLLECTION_NAME = "messages";
 
-async function addMessage(message) {
+async function handleCountTags(query) {
   let mongoClient;
+  let count = 0;
 
   try {
     mongoClient = await connectToCluster(process.env.DB_URI);
     const db = mongoClient.db(process.env.DB);
     const collection = db.collection(COLLECTION_NAME);
-
-    await collection.insertOne(message);
+    count = await collection.countDocuments(query);
   } catch (e) {
-    console.error(e);
+    console.error("error", e);
   } finally {
     await mongoClient.close();
+
+    return count;
   }
 }
 
-async function countIllocutionaryTags() {
+async function countSearleTags(groupId, begin, end) {
+  try {
+    const tags = [
+      "کنش اظهاری",
+      "کنش عاطفی",
+      "کنش ترغیبی",
+      "کنش دستوری",
+      "کنش تعهدی",
+    ];
+    let count = tags.map(async (tag) => {
+      const count = await handleCountTags({
+        "chat.id": parseInt(groupId),
+        "chat.type": "group",
+        date: { $gte: begin, $lte: end },
+        "tags.searleTags": { $in: [tag] },
+      });
+
+      return { tag, count };
+    });
+
+    return await Promise.all(count);
+  } catch (e) {
+    console.error("error", e);
+
+    return null;
+  }
+}
+
+async function countIllocutionaryTags(groupId, begin, end) {
   try {
     const tags = [
       "اعتراض",
@@ -49,7 +79,12 @@ async function countIllocutionaryTags() {
     ];
 
     let count = tags.map(async (tag) => {
-      const count = await countIn("tags.austinTags.illocutionary", tag);
+      const count = await handleCountTags({
+        "chat.id": parseInt(groupId),
+        "chat.type": "group",
+        date: { $gte: begin, $lte: end },
+        "tags.austinTags.illocutionary": { $in: [tag] },
+      });
 
       return { tag, count };
     });
@@ -62,7 +97,7 @@ async function countIllocutionaryTags() {
   }
 }
 
-async function countLocutionaryTags() {
+async function countLocutionaryTags(groupId, begin, end) {
   try {
     const tags = [
       "قدردانی",
@@ -91,7 +126,12 @@ async function countLocutionaryTags() {
     ];
 
     let count = tags.map(async (tag) => {
-      const count = await countIn("tags.austinTags.locutionary", tag);
+      const count = await handleCountTags({
+        "chat.id": parseInt(groupId),
+        "chat.type": "group",
+        date: { $gte: begin, $lte: end },
+        "tags.austinTags.locutionary": { $in: [tag] },
+      });
 
       return { tag, count };
     });
@@ -104,36 +144,17 @@ async function countLocutionaryTags() {
   }
 }
 
-async function countSearleTags() {
-  try {
-    const tags = [
-      "کنش اظهاری",
-      "کنش عاطفی",
-      "کنش ترغیبی",
-      "کنش دستوری",
-      "کنش تعهدی",
-    ];
-
-    let count = tags.map(async (tag) => {
-      const count = await countIn("tags.searleTags", tag);
-
-      return { tag, count };
-    });
-
-    return await Promise.all(count);
-  } catch (e) {
-    console.error("error", e);
-
-    return null;
-  }
-}
-
-async function countExpressionTags() {
+async function countExpressionTags(groupId, begin, end) {
   try {
     const tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
     let count = tags.map(async (tag) => {
-      const count = await countIn("tags.expressionTags", tag);
+      const count = await handleCountTags({
+        "chat.id": parseInt(groupId),
+        "chat.type": "group",
+        date: { $gte: begin, $lte: end },
+        "tags.expressionTags": { $in: [tag] },
+      });
 
       return { tag, count };
     });
@@ -146,12 +167,17 @@ async function countExpressionTags() {
   }
 }
 
-async function countSentimentTags() {
+async function countSentimentTags(groupId, begin, end) {
   try {
     const tags = ["مثبت", "منفی", "خنثی"];
 
     let count = tags.map(async (tag) => {
-      const count = await countIn("tags.sentimentTags", tag);
+      const count = await handleCountTags({
+        "chat.id": parseInt(groupId),
+        "chat.type": "group",
+        date: { $gte: begin, $lte: end },
+        "tags.sentimentTags": { $in: [tag] },
+      });
 
       return { tag, count };
     });
@@ -164,7 +190,7 @@ async function countSentimentTags() {
   }
 }
 
-async function countDistributionTags() {
+async function countDistributionTags(groupId, begin, end) {
   try {
     const tags = [
       "توسعه محصول",
@@ -219,7 +245,12 @@ async function countDistributionTags() {
     ];
 
     let count = tags.map(async (tag) => {
-      const count = await countIn("tags.distributionTags", tag);
+      const count = await handleCountTags({
+        "chat.id": parseInt(groupId),
+        "chat.type": "group",
+        date: { $gte: begin, $lte: end },
+        "tags.distributionTags": { $in: [tag] },
+      });
 
       return { tag, count };
     });
@@ -232,34 +263,69 @@ async function countDistributionTags() {
   }
 }
 
-async function countIn(key, item) {
+async function insertMessage(message) {
   let mongoClient;
-  let count = 0;
 
   try {
     mongoClient = await connectToCluster(process.env.DB_URI);
     const db = mongoClient.db(process.env.DB);
     const collection = db.collection(COLLECTION_NAME);
-    const filter = new Object();
-    filter[key] = { $in: [item] };
-    count = await collection.countDocuments(filter);
+
+    await collection.insertOne(message);
   } catch (e) {
-    console.error("error", e);
+    console.error(e);
+  } finally {
+    await mongoClient.close();
+  }
+}
+
+async function countTags(groupId, begin, end) {
+  try {
+    const searleTags = await countSearleTags(groupId, begin, end);
+    const illocutionaryTags = await countIllocutionaryTags(groupId, begin, end);
+    const locutionaryTags = await countLocutionaryTags(groupId, begin, end);
+    const expressionTags = await countExpressionTags(groupId, begin, end);
+    const sentimentTags = await countSentimentTags(groupId, begin, end);
+    const distributionTags = await countDistributionTags(groupId, begin, end);
+
+    return {
+      countSearleTags: searleTags,
+      countIllocutionaryTags: illocutionaryTags,
+      countLocutionaryTags: locutionaryTags,
+      countExpressionTags: expressionTags,
+      countSentimentTags: sentimentTags,
+      countDistributionTags: distributionTags,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function findMessages(query) {
+  let mongoClient;
+  let messages = null;
+
+  try {
+    mongoClient = await connectToCluster(process.env.DB_URI);
+    const db = mongoClient.db(process.env.DB);
+    const collection = db.collection(COLLECTION_NAME);
+
+    messages = collection.find(query);
+    messages = await messages.toArray();
+  } catch (e) {
+    messages = null;
+    console.error(e);
   } finally {
     await mongoClient.close();
 
-    return count;
+    return messages;
   }
 }
 
 const messagesCollection = {
-  addMessage,
-  countIllocutionaryTags,
-  countLocutionaryTags,
-  countSearleTags,
-  countExpressionTags,
-  countSentimentTags,
-  countDistributionTags,
+  insertMessage,
+  countTags,
+  findMessages,
 };
 
 module.exports = messagesCollection;

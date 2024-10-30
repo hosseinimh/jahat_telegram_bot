@@ -401,13 +401,41 @@ ${managerMessage}
   }
 }
 
-let analysors = {
-  getSearleAnalysorResponse,
-  getAustinAnalysorResponse,
-  getDistributionAnalysorResponse,
-  getExpressionAnalysorResponse,
-  getSentimentAnalysorResponse,
-};
+async function analyseTags(
+  countSearleTags,
+  countIllocutionaryTags,
+  countLocutionaryTags,
+  countExpressionTags,
+  countSentimentTags,
+  countDistributionTags
+) {
+  try {
+    const searleAnalyse = await getSearleAnalysorResponse(countSearleTags);
+    const austinAnalyse = await getAustinAnalysorResponse(
+      countIllocutionaryTags,
+      countLocutionaryTags
+    );
+    const sentimentAnalyse = await getSentimentAnalysorResponse(
+      countSentimentTags
+    );
+    const expressionAnalyse = await getExpressionAnalysorResponse(
+      countExpressionTags
+    );
+    const distributionAnalyse = await getDistributionAnalysorResponse(
+      countDistributionTags
+    );
+
+    return {
+      searleAnalyse,
+      austinAnalyse,
+      sentimentAnalyse,
+      expressionAnalyse,
+      distributionAnalyse,
+    };
+  } catch {
+    return null;
+  }
+}
 
 async function getMetisResponses(messages) {
   const austinResponse = await getAustinResponse(messages);
@@ -522,4 +550,4 @@ function getDistributionTags(content) {
   }
 }
 
-module.exports = { getMetisResponses, getTags, analysors, getTunerResponse };
+module.exports = { getMetisResponses, getTags, analyseTags, getTunerResponse };

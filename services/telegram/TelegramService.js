@@ -7,8 +7,8 @@ const {
   getMetisResponses,
   getTags,
   getTunerResponse,
+  analyseTags,
 } = require("../metis/MetisService");
-const sha256 = require("js-sha256").sha256;
 const utils = require("../../utils/utils");
 const { getLocale } = require("../../utils/utils");
 
@@ -18,34 +18,19 @@ const telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
 const TELEGRAM_BOT_USERNAME = "TeamTuneBot";
 const messages = getLocale().messages;
 const buttons = getLocale().buttons;
-let wiatForManagerResonse = false;
+let waitForManagerResponse = false;
+let groupId = null;
 
 telegramBot.on("callback_query", async function onCallbackQuery(callbackQuery) {
   const data = JSON.parse(callbackQuery.data);
-  const opts = {
-    chat_id: callbackQuery.message.chat.id,
-    message_id: callbackQuery.message.message_id,
-  };
 
   if (data.command === "selectGroup") {
-    onSelectGroupButton(callbackQuery.message, data.groupId);
+    await onSelectGroupButton(callbackQuery.message, data.groupId);
   } else if (data.command === "read") {
-    onReadButton(callbackQuery.message, data.groupId);
+    await onReadButton(callbackQuery.message, data.groupId);
   } else if (data.command === "tune") {
-    wiatForManagerResonse = true;
-    await telegramBot.sendMessage(
-      callbackQuery.message.chat.id,
-      `گزارش TeamTune در مورد آخرین وضعیت ارتباطی تیمت رو خوندی؟ اگر نخوندی اول از طریق دکمه «Read Your Team» حال و احوال ارتباطی تیمت رو بخون ...
-
-اگر خوندی حالا وقته تحلیله و اقدام🏃‍♂️🏃‍♀️... 
-
-برای اینکه بهت کمک کنم به یک سری ایده برای Tune کردن تیمت برسی، قبلش لازمه یه مقدار از ذهنیت‌ها و دغدغه‌هات به من بگی. مثلا می‌تونی به این سئوال‌ها فکر کنی و کوتاه بنویسی:
-🖌با خوندن گزارش، تحلیل خودت از وضعیت ارتباطی تیمت چیه؟ 
-🖌چه چیزی نگرانت کرد؟ چه چیزی خوشحال یا امیدوارت کرد؟
-🖌به نظر خودت مهم‌ترین مشکل ارتباطی که باید حلش کنی چیه؟
-🖌فکر می‌کنی چه کار میشه انجام داد و به نظرت آماده‌ی صحبت با چه کسانی هستی؟
-🖌به غیر از این سئوالا هر دغدغه دیگه‌ای که همین الان در مورد تیمت داری برام بنویس ...`
-    );
+    groupId = data.groupId;
+    await onTuneButton(callbackQuery.message, data.groupId);
   }
 });
 
@@ -57,7 +42,8 @@ telegramBot.on("message", async (message) => {
       message.chat.type === "group" &&
       message.new_chat_member?.username === TELEGRAM_BOT_USERNAME
     ) {
-      onBotAddedToGroup(message);
+      await onBotAddedToGroup(message);
+      resetState();
 
       return;
     }
@@ -66,84 +52,41 @@ telegramBot.on("message", async (message) => {
       message.chat.type === "group" &&
       message.left_chat_member?.username === TELEGRAM_BOT_USERNAME
     ) {
-      onBotRemovedFromGroup(message);
+      await onBotRemovedFromGroup(message);
+      resetState();
 
       return;
     }
 
     if (message.chat.type === "group") {
-      onGroupChat(message);
+      await onGroupChat(message);
+      resetState();
 
       return;
     }
 
     if (message.text === "/start") {
-      onStartButton(message);
+      await onStartButton(message);
+      resetState();
 
       return;
     }
 
-    //     if (!msg?.text) {
-    //       return;
-    //     }
+    if (!message?.text) {
+      resetState();
 
-    //     if (wiatForManagerResonse) {
-    //       wiatForManagerResonse = false;
+      return;
+    }
 
-    //       telegramBot.sendMessage(msg.chat.id, `لطفا منتظر بمانید ...`);
-    //       const report = await reportCollection.getFirstReport();
-    //       const response = await getTunerResponse(
-    //         msg.text,
-    //         report?.austin,
-    //         report?.searle,
-    //         report?.sentiment,
-    //         report?.expression,
-    //         report?.distribution
-    //       );
+    if (waitForManagerResponse) {
+      await onWaitManagerResponse(message);
+      resetState();
 
-    //       if (response) {
-    //         const opts = {
-    //           reply_markup: {
-    //             inline_keyboard: [
-    //               [
-    //                 {
-    //                   text: "تماس با تسهیل‌گر",
-    //                   callback_data: JSON.stringify({
-    //                     command: "facilitator",
-    //                   }),
-    //                 },
-    //               ],
-    //             ],
-    //           },
-    //         };
-    //         await telegramBot.sendMessage(msg.chat.id, response);
-    //         await telegramBot.sendMessage(
-    //           msg.chat.id,
-    //           `با توجه به توضیحاتت یک سری پیشنهاد دارم که در پیام بالا می‌تونی ببینی.
-    // وقشته که ‌ شروع کنی به انجام این اقدامات و اثرش رو در نحوه تعامل تیم و پیام‌هایی که بین افراد رد و بدل میشه ببینی. دوباره با تحلیل پیام‌های جدید و حال و احوال تیم، قدم‌های بعدی رو با هم بر می‌داریم.
+      return;
+    }
 
-    // 📍پیشنهاد می‌کنم برای اطمینان از کاری که می‌خواهی انجام بدی، نظر تسهیلگر TeamTune رو بگیری.
-    // موفق باشی ...`,
-    //           opts
-    //         );
-    //       }
-
-    //       return;
-    //     }
-
-    // const responses = await getMetisResponses(msg.text);
-    // const tags = getTags(
-    //   responses.austinResponse?.content,
-    //   responses.searleResponse?.content,
-    //   responses.sentimentResponse?.content,
-    //   responses.expressionResponse?.content,
-    //   responses.distributionResponse?.content
-    // );
-    // messageCollection.addMessage({
-    //   ...msg,
-    //   metis_response: responses,
-    //   tags,
-    // });
+    await onMessage(message);
+    resetState();
   } catch (e) {
     console.error(e);
   }
@@ -152,7 +95,7 @@ telegramBot.on("message", async (message) => {
 async function onBotAddedToGroup(message) {
   try {
     await groupsCollection.deleteGroups(message);
-    await groupsCollection.addGroup(message);
+    await groupsCollection.insertGroup(message);
   } catch {}
 }
 
@@ -175,7 +118,9 @@ async function onStartButton(message) {
   try {
     await telegramBot.sendMessage(message.chat.id, messages.start);
 
-    let groups = await groupsCollection.getMemberGroups(message);
+    let groups = await groupsCollection.findGroups({
+      "message.from.id": message.from.id,
+    });
 
     if (!groups || groups?.length === 0) {
       await telegramBot.sendMessage(message.chat.id, messages.botNotAdded);
@@ -253,22 +198,201 @@ async function onSelectGroupButton(message, groupId) {
 async function onReadButton(message, groupId) {
   try {
     const { begin, end } = utils.getYesterday();
-    const report = await reportsCollection.findReport({
-      "message.chat.id": groupId,
+    let reports = await reportsCollection.findReports({
+      groupId: parseInt(groupId),
+      begin: { $lte: begin },
+      end: { $gte: end },
     });
 
-    if (!group) {
-      await telegramBot.sendMessage(message.chat.id, messages.groupNotFound);
+    if (!reports || reports.length === 0) {
+      const msgs = await messagesCollection.findMessages({
+        "chat.id": parseInt(groupId),
+        "chat.type": "group",
+        date: { $gte: begin, $lte: end },
+      });
+
+      if (!msgs || msgs.length === 0) {
+        await telegramBot.sendMessage(
+          message.chat.id,
+          messages.messagesNotFound
+        );
+
+        return;
+      } else {
+        await telegramBot.sendMessage(message.chat.id, messages.loading);
+
+        const createdReport = await createReport(groupId, begin, end);
+
+        if (!createdReport) {
+          await telegramBot.sendMessage(
+            message.chat.id,
+            messages.reportsNotFound
+          );
+
+          return;
+        }
+
+        reports = await reportsCollection.findReports({
+          groupId: parseInt(groupId),
+          begin: { $lte: begin },
+          end: { $gte: end },
+        });
+
+        if (!reports || reports.length === 0) {
+          await telegramBot.sendMessage(
+            message.chat.id,
+            messages.reportsNotFound
+          );
+
+          return;
+        }
+      }
+    }
+
+    const encrypt = utils.crypt(process.env.SECRET_KEY, `${groupId}`);
+
+    await telegramBot.sendMessage(
+      message.chat.id,
+      messages.read.replace(":field", `${process.env.DASHBOARD_URL}/${encrypt}`)
+    );
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function onTuneButton(message, groupId) {
+  try {
+    const { begin, end } = utils.getYesterday();
+    const reports = await reportsCollection.findReports({
+      groupId: parseInt(groupId),
+      begin: { $lte: begin },
+      end: { $gte: end },
+    });
+
+    if (!reports || reports.length === 0) {
+      await telegramBot.sendMessage(message.chat.id, messages.readBeforeTune);
 
       return;
     }
 
-    await telegramBot.sendMessage(
-      message.chat.id,
-      messages.read.replace(
-        ":field",
-        `${process.env.DASHBOARD_URL}/${sha256(`${message.chat.id}`)}`
-      )
+    waitForManagerResponse = true;
+
+    await telegramBot.sendMessage(message.chat.id, messages.tune);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function onWaitManagerResponse(message) {
+  try {
+    waitForManagerResponse = false;
+
+    telegramBot.sendMessage(message.chat.id, messages.loading);
+
+    const { begin, end } = utils.getYesterday();
+    const report = await reportsCollection.findReport({
+      groupId: parseInt(groupId),
+      begin: { $lte: begin },
+      end: { $gte: end },
+    });
+
+    if (!report || report.length === 0) {
+      await telegramBot.sendMessage(message.chat.id, messages.readBeforeTune);
+
+      return;
+    }
+
+    const response = await getTunerResponse(
+      message.text,
+      report?.austin,
+      report?.searle,
+      report?.sentiment,
+      report?.expression,
+      report?.distribution
     );
+
+    if (response) {
+      const opts = {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: messages.contactFacilitator,
+                callback_data: JSON.stringify({
+                  command: "facilitator",
+                }),
+              },
+            ],
+          ],
+        },
+      };
+      await telegramBot.sendMessage(message.chat.id, response);
+      await telegramBot.sendMessage(
+        message.chat.id,
+        messages.contactFacilitatorText,
+        opts
+      );
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function createReport(groupId, begin, end) {
+  try {
+    const countTags = await messagesCollection.countTags(groupId, begin, end);
+
+    if (!countTags) {
+      return false;
+    }
+
+    const analysises = await analyseTags(
+      countTags.countSearleTags,
+      countTags.countIllocutionaryTags,
+      countTags.countLocutionaryTags,
+      countTags.countExpressionTags,
+      countTags.countSentimentTags,
+      countTags.countDistributionTags
+    );
+
+    await reportsCollection.deleteReports(groupId, begin, end);
+    await reportsCollection.insertReport(
+      analysises.searleAnalyse,
+      analysises.austinAnalyse,
+      analysises.sentimentAnalyse,
+      analysises.expressionAnalyse,
+      analysises.distributionAnalyse,
+      Math.floor(new Date().getTime() / 1000),
+      groupId,
+      begin,
+      end
+    );
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function onMessage(message) {
+  try {
+    const responses = await getMetisResponses(message.text);
+    const tags = getTags(
+      responses.austinResponse?.content,
+      responses.searleResponse?.content,
+      responses.sentimentResponse?.content,
+      responses.expressionResponse?.content,
+      responses.distributionResponse?.content
+    );
+    messagesCollection.addMessage({
+      ...message,
+      metis_response: responses,
+      tags,
+    });
   } catch {}
+}
+
+function resetState() {
+  waitForManagerResponse = false;
+  groupId = null;
 }

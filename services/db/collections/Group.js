@@ -2,7 +2,7 @@ const { connectToCluster } = require("../DbService");
 
 const COLLECTION_NAME = "groups";
 
-async function addGroup(message) {
+async function insertGroup(message) {
   let mongoClient;
 
   try {
@@ -39,28 +39,6 @@ async function deleteGroups(message) {
   }
 }
 
-async function getMemberGroups(message) {
-  let mongoClient;
-  let groups = null;
-
-  try {
-    mongoClient = await connectToCluster(process.env.DB_URI);
-    const db = mongoClient.db(process.env.DB);
-    const collection = db.collection(COLLECTION_NAME);
-
-    groups = collection.find({
-      "message.from.id": message.from.id,
-    });
-    groups = await groups.toArray();
-  } catch (e) {
-    console.error(e);
-  } finally {
-    await mongoClient.close();
-
-    return groups;
-  }
-}
-
 async function findGroup(query) {
   let mongoClient;
   let group = null;
@@ -80,6 +58,32 @@ async function findGroup(query) {
   }
 }
 
-const groupsCollection = { addGroup, deleteGroups, getMemberGroups, findGroup };
+async function findGroups(query) {
+  let mongoClient;
+  let groups = null;
+
+  try {
+    mongoClient = await connectToCluster(process.env.DB_URI);
+    const db = mongoClient.db(process.env.DB);
+    const collection = db.collection(COLLECTION_NAME);
+
+    groups = collection.find(query);
+    groups = await groups.toArray();
+  } catch (e) {
+    groups = null;
+    console.error(e);
+  } finally {
+    await mongoClient.close();
+
+    return groups;
+  }
+}
+
+const groupsCollection = {
+  insertGroup,
+  deleteGroups,
+  findGroup,
+  findGroups,
+};
 
 module.exports = groupsCollection;
