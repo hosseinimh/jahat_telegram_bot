@@ -17,6 +17,12 @@ let searleSession = null;
 let sentimentSession = null;
 let expressiontSession = null;
 let distributionSession = null;
+let searleAnalysorSession = null;
+let austinAnalysorSession = null;
+let distributionAnalysorSession = null;
+let expressionAnalysorSession = null;
+let sentimentAnalysorSession = null;
+let tunerSession = null;
 
 async function createSession(botId) {
   const data = { botId, user: null };
@@ -72,6 +78,30 @@ async function createDistributionSession() {
   return await createSession("e54a0f28-61ab-41df-aa8e-c21677ba5242");
 }
 
+async function createSearleAnalysorSession() {
+  return await createSession("f9d8a5c4-ed56-4009-b313-23d55a30ebb7");
+}
+
+async function createAustinAnalysorSession() {
+  return await createSession("c3e7e298-71e3-4c02-975d-5e0886e7a8f9");
+}
+
+async function createDistributionAnalysorSession() {
+  return await createSession("d418972a-99f1-459e-a58d-26bd18261bfa");
+}
+
+async function createExpressionAnalysorSession() {
+  return await createSession("e9f9c78b-3eb1-4caa-8306-3c9303428339");
+}
+
+async function createSentimentAnalysorSession() {
+  return await createSession("e578cf54-d8e8-483c-9fd2-e2f96143e8dd");
+}
+
+async function createTunerSession() {
+  return await createSession("9ca1ae5b-a6b5-41fb-b2b0-63592f7483fc");
+}
+
 async function getAustinResponse(message) {
   return await handleResponse(austinSession, createAustinSession, message);
 }
@@ -104,6 +134,281 @@ async function getDistributionResponse(message) {
   );
 }
 
+async function getSearleAnalysorResponse(items) {
+  try {
+    if (items?.length > 0) {
+      let count = 0;
+      let message = "";
+
+      items = items.filter((item) => item.count > 0);
+
+      items.forEach((item) => {
+        count += item.count;
+      });
+
+      if (count > 0) {
+        message = "تعداد کل پیام‌ها " + count + " می‌باشد. ";
+
+        items.forEach((item) => {
+          message +=
+            Math.floor((item.count / count) * 100) +
+            "% پیام‌ها حاوی " +
+            item.tag +
+            " می‌باشد. ";
+        });
+
+        const response = await handleResponse(
+          searleAnalysorSession,
+          createSearleAnalysorSession,
+          message
+        );
+
+        return response?.content;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function getSentimentAnalysorResponse(items) {
+  try {
+    if (items?.length > 0) {
+      let count = 0;
+      let message = "";
+
+      items = items.filter((item) => item.count > 0);
+
+      items.forEach((item) => {
+        count += item.count;
+      });
+
+      if (count > 0) {
+        message = "تعداد کل پیام‌ها " + count + " می‌باشد. ";
+
+        items.forEach((item) => {
+          message +=
+            Math.floor((item.count / count) * 100) +
+            "% پیام‌ها حاوی " +
+            item.tag +
+            " می‌باشد. ";
+        });
+
+        const response = await handleResponse(
+          sentimentAnalysorSession,
+          createSentimentAnalysorSession,
+          message
+        );
+
+        return response?.content;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function getAustinAnalysorResponse(illocutionaries, locutionaries) {
+  try {
+    let illocutionariesCount = 0;
+    let illocutionariesMessage = "";
+    let locutionariesCount = 0;
+    let locutionariesMessage = "";
+
+    if (illocutionaries?.length > 0) {
+      illocutionaries = illocutionaries.filter((item) => item.count > 0);
+
+      illocutionaries.forEach((item) => {
+        illocutionariesCount += item.count;
+      });
+
+      if (illocutionariesCount > 0) {
+        illocutionariesMessage =
+          "تعداد کل پیام‌ها " + illocutionariesCount + " می‌باشد. ";
+
+        illocutionaries.forEach((item) => {
+          illocutionariesMessage +=
+            Math.floor((item.count / illocutionariesCount) * 100) +
+            "% پیام‌ها حاوی " +
+            item.tag +
+            " می‌باشد. ";
+        });
+      }
+    }
+
+    if (locutionaries?.length > 0) {
+      locutionaries = locutionaries.filter((item) => item.count > 0);
+
+      locutionaries.forEach((item) => {
+        locutionariesCount += item.count;
+      });
+
+      if (locutionariesCount > 0) {
+        locutionariesMessage =
+          "تعداد کل پیام‌ها " + locutionariesCount + " می‌باشد. ";
+
+        locutionaries.forEach((item) => {
+          locutionariesMessage +=
+            Math.floor((item.count / locutionariesCount) * 100) +
+            "% پیام‌ها حاوی " +
+            item.tag +
+            " می‌باشد. ";
+        });
+      }
+    }
+
+    let message = "";
+
+    message += illocutionariesCount > 0 ? illocutionariesMessage : message;
+    message += locutionariesCount > 0 ? locutionariesMessage : message;
+
+    if (message?.length > 0) {
+      const response = await handleResponse(
+        austinAnalysorSession,
+        createAustinAnalysorSession,
+        message
+      );
+
+      return response?.content;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function getDistributionAnalysorResponse(items) {
+  try {
+    if (items?.length > 0) {
+      let count = 0;
+      let message = "";
+
+      items = items.filter((item) => item.count > 0);
+
+      items.forEach((item) => {
+        count += item.count;
+      });
+
+      if (count > 0) {
+        message = "تعداد کل پیام‌ها " + count + " می‌باشد. ";
+
+        items.forEach((item) => {
+          message +=
+            Math.floor((item.count / count) * 100) +
+            "% پیام‌ها حاوی " +
+            item.tag +
+            " می‌باشد. ";
+        });
+
+        const response = await handleResponse(
+          distributionAnalysorSession,
+          createDistributionAnalysorSession,
+          message
+        );
+
+        return response?.content;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function getExpressionAnalysorResponse(items) {
+  try {
+    if (items?.length > 0) {
+      let count = 0;
+      let message = "";
+
+      items = items.filter((item) => item.count > 0);
+
+      items.forEach((item) => {
+        count += item.count;
+      });
+
+      if (count > 0) {
+        message = "تعداد کل پیام‌ها " + count + " می‌باشد. ";
+
+        items.forEach((item) => {
+          message +=
+            Math.floor((item.count / count) * 100) +
+            "% پیام‌ها حاوی " +
+            item.tag +
+            " می‌باشد. ";
+        });
+
+        const response = await handleResponse(
+          expressionAnalysorSession,
+          createExpressionAnalysorSession,
+          message
+        );
+
+        return response?.content;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function getTunerResponse(
+  managerMessage,
+  austinContent,
+  searleContent,
+  sentimentContent,
+  expressionContent,
+  distributionContent
+) {
+  try {
+    let message = `توضیح نمودار بیانی و فرابیانی :
+${austinContent}
+
+توضیح نمودار کنش‌های گفتاری:
+${searleContent}
+
+توضیح نمودار موضوعات پیام‌ها:
+${distributionContent}
+
+توضیح نمودار احساسات پیام‌ها:
+${sentimentContent}
+
+توضیح نمودار پروجکشن یا اکسپرشن در پیام‌ها:
+${expressionContent}
+
+مدیر شرکت با دیدن این گزارش یک رفلکشن و بازخورد نوشته که به این شرح هست:
+${managerMessage}
+
+با این توضیحات لطفا یک پیشنهاد کوتاه (حداکثر در دو پاراگراف) بده که مدیر شرکت با چه اقداماتی می‌تونه چند قدم مشکلات ارتباطی منعکس شده در گزارش رو بهبود بده و کمک کنه روابط در سازمان‌شون بهتر بشه.`;
+
+    const response = await handleResponse(
+      tunerSession,
+      createTunerSession,
+      message
+    );
+
+    return response?.content;
+  } catch {
+    return null;
+  }
+}
+
+let analysors = {
+  getSearleAnalysorResponse,
+  getAustinAnalysorResponse,
+  getDistributionAnalysorResponse,
+  getExpressionAnalysorResponse,
+  getSentimentAnalysorResponse,
+};
+
 async function getMetisResponses(messages) {
   const austinResponse = await getAustinResponse(messages);
   const searleResponse = await getSearleResponse(messages);
@@ -134,12 +439,6 @@ function getTags(
     const sentimentTags = getSentimentTags(sentimentContent);
     const expressionTags = getExpressionTags(expressionContent);
     const distributionTags = getDistributionTags(distributionContent);
-
-    console.log("austinTags", austinTags);
-    console.log("searleTags", searleTags);
-    console.log("sentimentTags", sentimentTags);
-    console.log("expressionTags", expressionTags);
-    console.log("distributionTags", distributionTags);
 
     if (austinTags) {
       tags = { ...tags, austinTags };
@@ -223,4 +522,4 @@ function getDistributionTags(content) {
   }
 }
 
-module.exports = { getMetisResponses, getTags };
+module.exports = { getMetisResponses, getTags, analysors, getTunerResponse };

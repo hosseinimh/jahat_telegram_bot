@@ -1,3 +1,7 @@
+require("dotenv").config();
+const LOCALES = require("../types/locales");
+const fa_IR = require("../types/locales/fa-IR");
+
 const fa2enDigits = (num) => {
   if (num === null || num === undefined) {
     return null;
@@ -32,4 +36,48 @@ const fa2enDigits = (num) => {
   return output.replace(/,/g, "");
 };
 
-module.exports = { fa2enDigits };
+const getLocale = () => {
+  const locale = process.env.LOCALE || "fa_IR";
+
+  switch (locale) {
+    case LOCALES.FA_IR:
+      return fa_IR;
+    default:
+      return fa_IR;
+  }
+};
+
+const getYesterday = () => {
+  try {
+    let today = new Date();
+    let beginOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
+    let endOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      23,
+      59,
+      59,
+      999
+    );
+    let beginOfYesterday = beginOfToday.setDate(beginOfToday.getDate() - 1);
+    let endOfYesterday = endOfToday.setDate(endOfToday.getDate() - 1);
+
+    beginOfYesterday = Math.floor(beginOfYesterday / 1000);
+    endOfYesterday = Math.floor(endOfYesterday / 1000);
+
+    return { begin: beginOfYesterday, end: endOfYesterday };
+  } catch {
+    return { begin: null, end: null };
+  }
+};
+
+module.exports = { fa2enDigits, getLocale, getYesterday };

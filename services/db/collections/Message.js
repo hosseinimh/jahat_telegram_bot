@@ -1,14 +1,16 @@
 const { connectToCluster } = require("../DbService");
 
+const COLLECTION_NAME = "messages";
+
 async function addMessage(message) {
   let mongoClient;
 
   try {
     mongoClient = await connectToCluster(process.env.DB_URI);
     const db = mongoClient.db(process.env.DB);
-    const collection = db.collection("messages");
+    const collection = db.collection(COLLECTION_NAME);
 
-    await insertMessage(collection, message);
+    await collection.insertOne(message);
   } catch (e) {
     console.error(e);
   } finally {
@@ -237,12 +239,10 @@ async function countIn(key, item) {
   try {
     mongoClient = await connectToCluster(process.env.DB_URI);
     const db = mongoClient.db(process.env.DB);
-    const collection = db.collection("messages");
+    const collection = db.collection(COLLECTION_NAME);
     const filter = new Object();
     filter[key] = { $in: [item] };
-    const records = collection.find(filter);
-    count = await records.toArray();
-    count = count?.length > 0 ? count.length : 0;
+    count = await collection.countDocuments(filter);
   } catch (e) {
     console.error("error", e);
   } finally {
@@ -252,11 +252,7 @@ async function countIn(key, item) {
   }
 }
 
-async function insertMessage(collection, message) {
-  await collection.insertOne(message);
-}
-
-const messageCollection = {
+const messagesCollection = {
   addMessage,
   countIllocutionaryTags,
   countLocutionaryTags,
@@ -266,4 +262,4 @@ const messageCollection = {
   countDistributionTags,
 };
 
-module.exports = messageCollection;
+module.exports = messagesCollection;
