@@ -9,12 +9,12 @@ const { getLocale } = require("../utils/utils");
 const router = express.Router();
 const messages = getLocale().messages;
 
-router.post("/:groupId", async function (req, res, next) {
+router.post("/:groupId", async function (req, res) {
   if (!req.params.groupId) {
     return res.json({
       result: "0",
       resultCode: RESULT_CODES.FORM_INPUT_INVALID,
-      resultMessage: messages.grouIdNotFound,
+      resultMessage: messages.groupIdNotFound,
     });
   }
 
@@ -27,11 +27,11 @@ router.post("/:groupId", async function (req, res, next) {
     return res.json({
       result: "0",
       resultCode: RESULT_CODES.FORM_INPUT_INVALID,
-      resultMessage: messages.grouIdNotFound,
+      resultMessage: messages.groupIdNotFound,
     });
   }
 
-  const { begin, end } = utils.getYesterday();
+  const { begin, end } = utils.get30DaysPeriod();
   const countTags = await messagesCollection.countTags(groupId, begin, end);
   const report = await reportsCollection.findReport({
     groupId: parseInt(groupId),
@@ -43,7 +43,13 @@ router.post("/:groupId", async function (req, res, next) {
     result: "1",
     resultData: {
       countTags,
-      report,
+      report: {
+        searle: report.searle,
+        austin: report.austin,
+        distribution: report.distribution,
+        expression: report.expression,
+        sentiment: report.sentiment,
+      },
     },
   });
 });

@@ -47,7 +47,7 @@ const getLocale = () => {
   }
 };
 
-const getYesterday = () => {
+const get1DayPeriod = () => {
   try {
     let today = new Date();
     let beginOfToday = new Date(
@@ -68,14 +68,79 @@ const getYesterday = () => {
       59,
       999
     );
-    // let beginOfYesterday = beginOfToday.setDate(beginOfToday.getDate() - 1);
-    let beginOfYesterday = beginOfToday.setDate(beginOfToday.getDate() - 30);
-    // let endOfYesterday = endOfToday.setDate(endOfToday.getDate() - 1);
-    let endOfYesterday = endOfToday.setDate(endOfToday.getDate());
-    beginOfYesterday = Math.floor(beginOfYesterday / 1000);
-    endOfYesterday = Math.floor(endOfYesterday / 1000);
+    let beginOfPeriod = beginOfToday.setDate(beginOfToday.getDate() - 1);
+    let endOfPeriod = endOfToday.setDate(endOfToday.getDate() - 1);
 
-    return { begin: beginOfYesterday, end: endOfYesterday };
+    beginOfPeriod = Math.floor(beginOfPeriod / 1000);
+    endOfPeriod = Math.floor(endOfPeriod / 1000);
+
+    return { begin: beginOfPeriod, end: endOfPeriod };
+  } catch {
+    return { begin: null, end: null };
+  }
+};
+
+const get7DaysPeriod = () => {
+  try {
+    let today = new Date();
+    let beginOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
+    let endOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      23,
+      59,
+      59,
+      999
+    );
+    let beginOfPeriod = beginOfToday.setDate(beginOfToday.getDate() - 7);
+    let endOfPeriod = endOfToday.setDate(endOfToday.getDate() - 1);
+
+    beginOfPeriod = Math.floor(beginOfPeriod / 1000);
+    endOfPeriod = Math.floor(endOfPeriod / 1000);
+
+    return { begin: beginOfPeriod, end: endOfPeriod };
+  } catch {
+    return { begin: null, end: null };
+  }
+};
+
+const get30DaysPeriod = () => {
+  try {
+    let today = new Date();
+    let beginOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
+    let endOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      23,
+      59,
+      59,
+      999
+    );
+    let beginOfPeriod = beginOfToday.setDate(beginOfToday.getDate() - 30);
+    let endOfPeriod = endOfToday.setDate(endOfToday.getDate() - 1);
+
+    beginOfPeriod = Math.floor(beginOfPeriod / 1000);
+    endOfPeriod = Math.floor(endOfPeriod / 1000);
+
+    return { begin: beginOfPeriod, end: endOfPeriod };
   } catch {
     return { begin: null, end: null };
   }
@@ -107,4 +172,14 @@ const decrypt = (salt, encoded) => {
     .join("");
 };
 
-module.exports = { fa2enDigits, getLocale, getYesterday, crypt, decrypt };
+const utils = {
+  fa2enDigits,
+  getLocale,
+  get1DayPeriod,
+  get7DaysPeriod,
+  get30DaysPeriod,
+  crypt,
+  decrypt,
+};
+
+module.exports = utils;

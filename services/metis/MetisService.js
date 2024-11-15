@@ -1,5 +1,20 @@
 const axios = require("axios");
+const errorsCollection = require("../db/collections/Error");
 const { fa2enDigits } = require("../../utils/utils");
+
+let sessions = {
+  searleSession: null,
+  austinSession: null,
+  distributionSession: null,
+  expressiontSession: null,
+  sentimentSession: null,
+  searleAnalysorSession: null,
+  austinAnalysorSession: null,
+  distributionAnalysorSession: null,
+  expressionAnalysorSession: null,
+  sentimentAnalysorSession: null,
+  tunerSession: null,
+};
 
 const createConfig = () => {
   const config = {
@@ -12,126 +27,80 @@ const createConfig = () => {
   return config;
 };
 
-let austinSession = null;
-let searleSession = null;
-let sentimentSession = null;
-let expressiontSession = null;
-let distributionSession = null;
-let searleAnalysorSession = null;
-let austinAnalysorSession = null;
-let distributionAnalysorSession = null;
-let expressionAnalysorSession = null;
-let sentimentAnalysorSession = null;
-let tunerSession = null;
-
 async function createSession(botId) {
-  const data = { botId, user: null };
-  const response = await axios.post(
-    `https://api.metisai.ir/api/v1/chat/session`,
-    data,
-    createConfig()
-  );
-
-  return response.data;
-}
-
-async function handleResponse(session, createSession, message) {
-  let result = null;
-
   try {
-    if (!session) {
-      session = await createSession();
-    }
-
-    const data = { message: { content: message }, type: "USER" };
+    const data = { botId, user: null };
     const response = await axios.post(
-      `https://api.metisai.ir/api/v1/chat/session/${session.id}/message`,
+      `https://api.metisai.ir/api/v1/chat/session`,
       data,
       createConfig()
     );
 
-    result = response.data;
+    return response.data;
   } catch (e) {
-    console.error(e);
-  } finally {
-    return result;
+    errorsCollection.insertError(e);
+
+    return null;
   }
 }
 
-async function createAustinSession() {
-  return await createSession("0226b5cf-3305-4930-a393-ff9023da7b82");
+async function handleResponse(session, botId, message) {
+  try {
+    if (!sessions[session]) {
+      sessions[session] = await createSession(botId);
+    }
+
+    const data = { message: { content: message, type: "USER" } };
+    const response = await axios.post(
+      `https://api.metisai.ir/api/v1/chat/session/${sessions[session].id}/message`,
+      data,
+      createConfig()
+    );
+
+    return response.data;
+  } catch (e) {
+    errorsCollection.insertError(e);
+
+    return null;
+  }
 }
 
-async function createSearleSession() {
-  return await createSession("769899f6-9a24-41e1-b3c4-d01bfe9f2784");
-}
+const botIds = {
+  searle: "769899f6-9a24-41e1-b3c4-d01bfe9f2784",
+  austin: "0226b5cf-3305-4930-a393-ff9023da7b82",
+  distribution: "e54a0f28-61ab-41df-aa8e-c21677ba5242",
+  expression: "ddf208f3-49b5-452f-8d07-a8240f93fa32",
+  sentiment: "853070b5-82a8-4455-b2e8-cf96c43ad998",
+  searleAnalysor: "f9d8a5c4-ed56-4009-b313-23d55a30ebb7",
+  austinAnalysor: "c3e7e298-71e3-4c02-975d-5e0886e7a8f9",
+  distributionAnalysor: "d418972a-99f1-459e-a58d-26bd18261bfa",
+  expressionAnalysor: "e9f9c78b-3eb1-4caa-8306-3c9303428339",
+  sentimentAnalysor: "e578cf54-d8e8-483c-9fd2-e2f96143e8dd",
+  tuner: "9ca1ae5b-a6b5-41fb-b2b0-63592f7483fc",
+};
 
-async function createSentimentSession() {
-  return await createSession("853070b5-82a8-4455-b2e8-cf96c43ad998");
-}
-
-async function createExpressionSession() {
-  return await createSession("ddf208f3-49b5-452f-8d07-a8240f93fa32");
-}
-
-async function createDistributionSession() {
-  return await createSession("e54a0f28-61ab-41df-aa8e-c21677ba5242");
-}
-
-async function createSearleAnalysorSession() {
-  return await createSession("f9d8a5c4-ed56-4009-b313-23d55a30ebb7");
-}
-
-async function createAustinAnalysorSession() {
-  return await createSession("c3e7e298-71e3-4c02-975d-5e0886e7a8f9");
-}
-
-async function createDistributionAnalysorSession() {
-  return await createSession("d418972a-99f1-459e-a58d-26bd18261bfa");
-}
-
-async function createExpressionAnalysorSession() {
-  return await createSession("e9f9c78b-3eb1-4caa-8306-3c9303428339");
-}
-
-async function createSentimentAnalysorSession() {
-  return await createSession("e578cf54-d8e8-483c-9fd2-e2f96143e8dd");
-}
-
-async function createTunerSession() {
-  return await createSession("9ca1ae5b-a6b5-41fb-b2b0-63592f7483fc");
+async function getSearleResponse(message) {
+  return await handleResponse("searleSession", botIds.searle, message);
 }
 
 async function getAustinResponse(message) {
-  return await handleResponse(austinSession, createAustinSession, message);
+  return await handleResponse("austinSession", botIds.austin, message);
 }
 
-async function getSearleResponse(message) {
-  return await handleResponse(searleSession, createSearleSession, message);
-}
-
-async function getSentimentResponse(message) {
+async function getDistributionResponse(message) {
   return await handleResponse(
-    sentimentSession,
-    createSentimentSession,
+    "distributionSession",
+    botIds.distribution,
     message
   );
 }
 
 async function getExpressionResponse(message) {
-  return await handleResponse(
-    expressiontSession,
-    createExpressionSession,
-    message
-  );
+  return await handleResponse("expressiontSession", botIds.expression, message);
 }
 
-async function getDistributionResponse(message) {
-  return await handleResponse(
-    distributionSession,
-    createDistributionSession,
-    message
-  );
+async function getSentimentResponse(message) {
+  return await handleResponse("sentimentSession", botIds.sentiment, message);
 }
 
 async function getSearleAnalysorResponse(items) {
@@ -158,8 +127,8 @@ async function getSearleAnalysorResponse(items) {
         });
 
         const response = await handleResponse(
-          searleAnalysorSession,
-          createSearleAnalysorSession,
+          "searleAnalysorSession",
+          botIds.searleAnalysor,
           message
         );
 
@@ -168,46 +137,9 @@ async function getSearleAnalysorResponse(items) {
     }
 
     return null;
-  } catch {
-    return null;
-  }
-}
+  } catch (e) {
+    errorsCollection.insertError(e);
 
-async function getSentimentAnalysorResponse(items) {
-  try {
-    if (items?.length > 0) {
-      let count = 0;
-      let message = "";
-
-      items = items.filter((item) => item.count > 0);
-
-      items.forEach((item) => {
-        count += item.count;
-      });
-
-      if (count > 0) {
-        message = "تعداد کل پیام‌ها " + count + " می‌باشد. ";
-
-        items.forEach((item) => {
-          message +=
-            Math.floor((item.count / count) * 100) +
-            "% پیام‌ها حاوی " +
-            item.tag +
-            " می‌باشد. ";
-        });
-
-        const response = await handleResponse(
-          sentimentAnalysorSession,
-          createSentimentAnalysorSession,
-          message
-        );
-
-        return response?.content;
-      }
-    }
-
-    return null;
-  } catch {
     return null;
   }
 }
@@ -268,8 +200,8 @@ async function getAustinAnalysorResponse(illocutionaries, locutionaries) {
 
     if (message?.length > 0) {
       const response = await handleResponse(
-        austinAnalysorSession,
-        createAustinAnalysorSession,
+        "austinAnalysorSession",
+        botIds.austinAnalysor,
         message
       );
 
@@ -277,7 +209,9 @@ async function getAustinAnalysorResponse(illocutionaries, locutionaries) {
     }
 
     return null;
-  } catch {
+  } catch (e) {
+    errorsCollection.insertError(e);
+
     return null;
   }
 }
@@ -306,8 +240,8 @@ async function getDistributionAnalysorResponse(items) {
         });
 
         const response = await handleResponse(
-          distributionAnalysorSession,
-          createDistributionAnalysorSession,
+          "distributionAnalysorSession",
+          botIds.distributionAnalysor,
           message
         );
 
@@ -316,7 +250,9 @@ async function getDistributionAnalysorResponse(items) {
     }
 
     return null;
-  } catch {
+  } catch (e) {
+    errorsCollection.insertError(e);
+
     return null;
   }
 }
@@ -345,8 +281,8 @@ async function getExpressionAnalysorResponse(items) {
         });
 
         const response = await handleResponse(
-          expressionAnalysorSession,
-          createExpressionAnalysorSession,
+          "expressionAnalysorSession",
+          botIds.expressionAnalysor,
           message
         );
 
@@ -355,18 +291,61 @@ async function getExpressionAnalysorResponse(items) {
     }
 
     return null;
-  } catch {
+  } catch (e) {
+    errorsCollection.insertError(e);
+
+    return null;
+  }
+}
+
+async function getSentimentAnalysorResponse(items) {
+  try {
+    if (items?.length > 0) {
+      let count = 0;
+      let message = "";
+
+      items = items.filter((item) => item.count > 0);
+
+      items.forEach((item) => {
+        count += item.count;
+      });
+
+      if (count > 0) {
+        message = "تعداد کل پیام‌ها " + count + " می‌باشد. ";
+
+        items.forEach((item) => {
+          message +=
+            Math.floor((item.count / count) * 100) +
+            "% پیام‌ها حاوی " +
+            item.tag +
+            " می‌باشد. ";
+        });
+
+        const response = await handleResponse(
+          "sentimentAnalysorSession",
+          botIds.sentimentAnalysor,
+          message
+        );
+
+        return response?.content;
+      }
+    }
+
+    return null;
+  } catch (e) {
+    errorsCollection.insertError(e);
+
     return null;
   }
 }
 
 async function getTunerResponse(
   managerMessage,
-  austinContent,
   searleContent,
-  sentimentContent,
+  austinContent,
+  distributionContent,
   expressionContent,
-  distributionContent
+  sentimentContent
 ) {
   try {
     let message = `توضیح نمودار بیانی و فرابیانی :
@@ -390,13 +369,15 @@ ${managerMessage}
 با این توضیحات لطفا یک پیشنهاد کوتاه (حداکثر در دو پاراگراف) بده که مدیر شرکت با چه اقداماتی می‌تونه چند قدم مشکلات ارتباطی منعکس شده در گزارش رو بهبود بده و کمک کنه روابط در سازمان‌شون بهتر بشه.`;
 
     const response = await handleResponse(
-      tunerSession,
-      createTunerSession,
+      "tunerSession",
+      botIds.tuner,
       message
     );
 
     return response?.content;
-  } catch {
+  } catch (e) {
+    errorsCollection.insertError(e);
+
     return null;
   }
 }
@@ -405,9 +386,9 @@ async function analyseTags(
   countSearleTags,
   countIllocutionaryTags,
   countLocutionaryTags,
+  countDistributionTags,
   countExpressionTags,
-  countSentimentTags,
-  countDistributionTags
+  countSentimentTags
 ) {
   try {
     const searleAnalyse = await getSearleAnalysorResponse(countSearleTags);
@@ -415,81 +396,97 @@ async function analyseTags(
       countIllocutionaryTags,
       countLocutionaryTags
     );
-    const sentimentAnalyse = await getSentimentAnalysorResponse(
-      countSentimentTags
+    const distributionAnalyse = await getDistributionAnalysorResponse(
+      countDistributionTags
     );
     const expressionAnalyse = await getExpressionAnalysorResponse(
       countExpressionTags
     );
-    const distributionAnalyse = await getDistributionAnalysorResponse(
-      countDistributionTags
+    const sentimentAnalyse = await getSentimentAnalysorResponse(
+      countSentimentTags
     );
 
     return {
       searleAnalyse,
       austinAnalyse,
-      sentimentAnalyse,
-      expressionAnalyse,
       distributionAnalyse,
+      expressionAnalyse,
+      sentimentAnalyse,
     };
-  } catch {
+  } catch (e) {
+    errorsCollection.insertError(e);
+
     return null;
   }
 }
 
 async function getMetisResponses(messages) {
-  const austinResponse = await getAustinResponse(messages);
   const searleResponse = await getSearleResponse(messages);
-  const sentimentResponse = await getSentimentResponse(messages);
-  const expressionResponse = await getExpressionResponse(messages);
+  const austinResponse = await getAustinResponse(messages);
   const distributionResponse = await getDistributionResponse(messages);
+  const expressionResponse = await getExpressionResponse(messages);
+  const sentimentResponse = await getSentimentResponse(messages);
 
   return {
-    austinResponse,
     searleResponse,
-    sentimentResponse,
-    expressionResponse,
+    austinResponse,
     distributionResponse,
+    expressionResponse,
+    sentimentResponse,
   };
 }
 
 function getTags(
-  austinContent,
   searleContent,
-  sentimentContent,
+  austinContent,
+  distributionContent,
   expressionContent,
-  distributionContent
+  sentimentContent
 ) {
   try {
     let tags = {};
-    const austinTags = getAustinTags(austinContent);
     const searleTags = getSearleTags(searleContent);
-    const sentimentTags = getSentimentTags(sentimentContent);
-    const expressionTags = getExpressionTags(expressionContent);
+    const austinTags = getAustinTags(austinContent);
     const distributionTags = getDistributionTags(distributionContent);
-
-    if (austinTags) {
-      tags = { ...tags, austinTags };
-    }
+    const expressionTags = getExpressionTags(expressionContent);
+    const sentimentTags = getSentimentTags(sentimentContent);
 
     if (searleTags?.length > 0) {
       tags = { ...tags, searleTags };
     }
 
-    if (sentimentTags) {
-      tags = { ...tags, sentimentTags };
-    }
-
-    if (expressionTags) {
-      tags = { ...tags, expressionTags };
+    if (austinTags) {
+      tags = { ...tags, austinTags };
     }
 
     if (distributionTags?.length > 0) {
       tags = { ...tags, distributionTags };
     }
 
+    if (expressionTags) {
+      tags = { ...tags, expressionTags };
+    }
+
+    if (sentimentTags) {
+      tags = { ...tags, sentimentTags };
+    }
+
     return tags;
-  } catch {
+  } catch (e) {
+    errorsCollection.insertError(e);
+
+    return null;
+  }
+}
+
+function getSearleTags(content) {
+  try {
+    let tags = content ? content.trim().split("، ") : null;
+
+    return tags?.length > 0 ? tags : null;
+  } catch (e) {
+    errorsCollection.insertError(e);
+
     return null;
   }
 }
@@ -510,44 +507,39 @@ function getAustinTags(content) {
 
     return tags;
   } catch (e) {
-    console.error(e);
+    errorsCollection.insertError(e);
 
     return null;
   }
 }
 
-function getSearleTags(content) {
+function getDistributionTags(content) {
   try {
-    let tags = content.trim().split("، ");
+    const tags = content ? content.trim().split("، ") : null;
 
     return tags?.length > 0 ? tags : null;
   } catch (e) {
-    console.error(e);
+    errorsCollection.insertError(e);
 
     return null;
   }
+}
+
+function getExpressionTags(content) {
+  const tag = content ? fa2enDigits(content?.trim()) : null;
+
+  return isNaN(tag) ? null : parseInt(tag);
 }
 
 function getSentimentTags(content) {
   return content ?? null;
 }
 
-function getExpressionTags(content) {
-  const tag = fa2enDigits(content?.trim());
+const metisService = {
+  getMetisResponses,
+  getTags,
+  analyseTags,
+  getTunerResponse,
+};
 
-  return isNaN(tag) ? null : parseInt(tag);
-}
-
-function getDistributionTags(content) {
-  try {
-    const tags = content.trim().split("، ");
-
-    return tags?.length > 0 ? tags : null;
-  } catch (e) {
-    console.error(e);
-
-    return null;
-  }
-}
-
-module.exports = { getMetisResponses, getTags, analyseTags, getTunerResponse };
+module.exports = metisService;

@@ -8,8 +8,8 @@ async function connectToCluster() {
     await mongoClient.connect();
 
     return mongoClient;
-  } catch (error) {
-    console.error("Connection to MongoDB Atlas failed!", error);
+  } catch (e) {
+    console.error("Connection to MongoDB Atlas failed!", e);
     process.exit();
   }
 }

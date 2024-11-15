@@ -1,4 +1,10 @@
 const { connectToCluster } = require("../DbService");
+const SEARLE_TAGS = require("../../../types/searleTags");
+const ILLOCUTIONARY_TAGS = require("../../../types/illocutionaryTags");
+const LOCUTIONARY_TAGS = require("../../../types/locutionaryTags");
+const DISTRIBUTION_TAGS = require("../../../types/distributionTags");
+const EXPRESSION_TAGS = require("../../../types/expressionTags");
+const SENTIMENT_TAGS = require("../../../types/sentimentTags");
 
 const COLLECTION_NAME = "messages";
 
@@ -22,14 +28,7 @@ async function handleCountTags(query) {
 
 async function countSearleTags(groupId, begin, end) {
   try {
-    const tags = [
-      "کنش اظهاری",
-      "کنش عاطفی",
-      "کنش ترغیبی",
-      "کنش دستوری",
-      "کنش تعهدی",
-    ];
-    let count = tags.map(async (tag) => {
+    const count = SEARLE_TAGS.map(async (tag) => {
       const count = await handleCountTags({
         "chat.id": parseInt(groupId),
         "chat.type": "group",
@@ -50,35 +49,7 @@ async function countSearleTags(groupId, begin, end) {
 
 async function countIllocutionaryTags(groupId, begin, end) {
   try {
-    const tags = [
-      "اعتراض",
-      "نشست",
-      "سیاست‌گذاری",
-      "سپاس‌گذاری",
-      "تعریف",
-      "تبریک",
-      "تهدیدی",
-      "درخواست",
-      "احترام",
-      "شکایت",
-      "امیدواری و آرزومندی",
-      "مشارکت در بهبود",
-      "پاسخگویی",
-      "تشویق",
-      "تحسین",
-      "پیشنهاد",
-      "قدردانی",
-      "اطلاع‌رسانی",
-      "حمایت",
-      "دفاع",
-      "موافقت",
-      "سوال",
-      "شوخی طبعی",
-      "حس قربانی شدن",
-      "شوخی",
-    ];
-
-    let count = tags.map(async (tag) => {
+    let count = ILLOCUTIONARY_TAGS.map(async (tag) => {
       const count = await handleCountTags({
         "chat.id": parseInt(groupId),
         "chat.type": "group",
@@ -99,33 +70,7 @@ async function countIllocutionaryTags(groupId, begin, end) {
 
 async function countLocutionaryTags(groupId, begin, end) {
   try {
-    const tags = [
-      "قدردانی",
-      "بیان مسئله",
-      "اشتراک تجربه/گفتگو/احساس",
-      "نشست",
-      "امیدواری و آرزومندی",
-      "درخواست",
-      "تبریک",
-      "جذب توجه به موضوع",
-      "پاسخگویی",
-      "اطلاع‌رسانی",
-      "تحسین",
-      "تشویق",
-      "ارائه تصویر کلی‌تر",
-      "موافقت",
-      "پیشنهاد",
-      "پرسش",
-      "اعتراض",
-      "اقدام",
-      "شوخی طبعی",
-      "راهنمایی",
-      "احترام",
-      "اشتراک‌گذاری",
-      "شکایت",
-    ];
-
-    let count = tags.map(async (tag) => {
+    const count = LOCUTIONARY_TAGS.map(async (tag) => {
       const count = await handleCountTags({
         "chat.id": parseInt(groupId),
         "chat.type": "group",
@@ -144,11 +89,30 @@ async function countLocutionaryTags(groupId, begin, end) {
   }
 }
 
+async function countDistributionTags(groupId, begin, end) {
+  try {
+    const count = DISTRIBUTION_TAGS.map(async (tag) => {
+      const count = await handleCountTags({
+        "chat.id": parseInt(groupId),
+        "chat.type": "group",
+        date: { $gte: begin, $lte: end },
+        "tags.distributionTags": { $in: [tag] },
+      });
+
+      return { tag, count };
+    });
+
+    return await Promise.all(count);
+  } catch (e) {
+    console.error("error", e);
+
+    return null;
+  }
+}
+
 async function countExpressionTags(groupId, begin, end) {
   try {
-    const tags = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-    let count = tags.map(async (tag) => {
+    const count = EXPRESSION_TAGS.map(async (tag) => {
       const count = await handleCountTags({
         "chat.id": parseInt(groupId),
         "chat.type": "group",
@@ -169,87 +133,12 @@ async function countExpressionTags(groupId, begin, end) {
 
 async function countSentimentTags(groupId, begin, end) {
   try {
-    const tags = ["مثبت", "منفی", "خنثی"];
-
-    let count = tags.map(async (tag) => {
+    let count = SENTIMENT_TAGS.map(async (tag) => {
       const count = await handleCountTags({
         "chat.id": parseInt(groupId),
         "chat.type": "group",
         date: { $gte: begin, $lte: end },
         "tags.sentimentTags": { $in: [tag] },
-      });
-
-      return { tag, count };
-    });
-
-    return await Promise.all(count);
-  } catch (e) {
-    console.error("error", e);
-
-    return null;
-  }
-}
-
-async function countDistributionTags(groupId, begin, end) {
-  try {
-    const tags = [
-      "توسعه محصول",
-      "پشتیبانی مشتریان",
-      "هماهنگی تیمی",
-      "حقوق و مزایا",
-      "مسائل رفاهی",
-      "مرخصی و غیبت",
-      "استخدام نیرو",
-      "آموزش و توسعه",
-      "ارتقاء شغلی",
-      "اعتراض مشتریان",
-      "قیمت‌گذاری",
-      "مدیریت پروژه",
-      "درخواست کمک",
-      "تهیه مستندات",
-      "حل مشکلات تیمی",
-      "اشتراک دانش",
-      "نوآوری و خلاقیت",
-      "فروش و بازاریابی",
-      "کنترل کیفیت",
-      "تحقیق و توسعه",
-      "پشتیبانی فنی",
-      "امور مالی",
-      "قراردادها و توافقات",
-      "مدیریت ریسک",
-      "ایمنی و بهداشت",
-      "مشاوره و پیشنهادات",
-      "مدیریت منابع انسانی",
-      "حضور و غیاب",
-      "کنترل بودجه",
-      "اطلاع‌رسانی داخلی",
-      "تعامل با تامین‌کنندگان",
-      "روابط عمومی",
-      "بازخورد کارکنان",
-      "مسائل حقوقی",
-      "مدیریت مشتریان",
-      "برنامه‌های تشویقی",
-      "برنامه‌ریزی استراتژیک",
-      "خدمات پس از فروش",
-      "ارتباطات بین‌المللی",
-      "مسائل امنیتی",
-      "برنامه‌های فرهنگی",
-      "تحلیل داده‌ها",
-      "مدیریت زمان",
-      "توسعه فردی",
-      "مدیریت فناوری اطلاعات",
-      "برگزاری جلسات",
-      "تعارضات تیمی",
-      "انتقادات کارکنان",
-      "فرهنگ سازمانی",
-    ];
-
-    let count = tags.map(async (tag) => {
-      const count = await handleCountTags({
-        "chat.id": parseInt(groupId),
-        "chat.type": "group",
-        date: { $gte: begin, $lte: end },
-        "tags.distributionTags": { $in: [tag] },
       });
 
       return { tag, count };
@@ -284,19 +173,21 @@ async function countTags(groupId, begin, end) {
     const searleTags = await countSearleTags(groupId, begin, end);
     const illocutionaryTags = await countIllocutionaryTags(groupId, begin, end);
     const locutionaryTags = await countLocutionaryTags(groupId, begin, end);
+    const distributionTags = await countDistributionTags(groupId, begin, end);
     const expressionTags = await countExpressionTags(groupId, begin, end);
     const sentimentTags = await countSentimentTags(groupId, begin, end);
-    const distributionTags = await countDistributionTags(groupId, begin, end);
 
     return {
       countSearleTags: searleTags,
       countIllocutionaryTags: illocutionaryTags,
       countLocutionaryTags: locutionaryTags,
+      countDistributionTags: distributionTags,
       countExpressionTags: expressionTags,
       countSentimentTags: sentimentTags,
-      countDistributionTags: distributionTags,
     };
-  } catch {
+  } catch (e) {
+    console.error(e);
+
     return null;
   }
 }

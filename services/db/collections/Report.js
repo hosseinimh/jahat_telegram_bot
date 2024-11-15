@@ -48,7 +48,6 @@ async function insertReport(
   distribution,
   expression,
   sentiment,
-  date,
   groupId,
   begin,
   end
@@ -66,7 +65,7 @@ async function insertReport(
       distribution,
       expression,
       sentiment,
-      date,
+      date: Math.floor(new Date().getTime() / 1000),
       groupId,
       begin,
       end,

@@ -3,21 +3,16 @@ const TelegramBot = require("node-telegram-bot-api");
 const messagesCollection = require("../db/collections/Message");
 const reportsCollection = require("../db/collections/Report");
 const groupsCollection = require("../db/collections/Group");
-const {
-  getMetisResponses,
-  getTags,
-  getTunerResponse,
-  analyseTags,
-} = require("../metis/MetisService");
+const errorsCollection = require("../db/collections/Error");
+const metisService = require("../metis/MetisService");
 const utils = require("../../utils/utils");
-const { getLocale } = require("../../utils/utils");
 
 const telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
   polling: true,
 });
 const TELEGRAM_BOT_USERNAME = "TeamTuneBot";
-const messages = getLocale().messages;
-const buttons = getLocale().buttons;
+const messages = utils.getLocale().messages;
+const buttons = utils.getLocale().buttons;
 let waitForManagerResponse = false;
 let groupId = null;
 
@@ -35,9 +30,8 @@ telegramBot.on("callback_query", async function onCallbackQuery(callbackQuery) {
 });
 
 telegramBot.on("message", async (message) => {
+  console.log(message);
   try {
-    console.log(message);
-
     if (
       message.chat.type === "group" &&
       message.new_chat_member?.username === TELEGRAM_BOT_USERNAME
@@ -58,15 +52,16 @@ telegramBot.on("message", async (message) => {
       return;
     }
 
-    if (message.chat.type === "group") {
-      await onGroupChat(message);
-      resetState();
-
-      return;
-    }
-
     if (message.text === "/start") {
-      await onStartButton(message);
+      if (message.chat.type === "group") {
+        await onGroupChat(message);
+        resetState();
+
+        return;
+      } else if (message.chat.type === "private") {
+        await onStartButton(message);
+      }
+
       resetState();
 
       return;
@@ -78,17 +73,19 @@ telegramBot.on("message", async (message) => {
       return;
     }
 
-    if (waitForManagerResponse) {
+    if (waitForManagerResponse && message.chat.type === "private") {
       await onWaitManagerResponse(message);
       resetState();
 
       return;
     }
 
-    await onMessage(message);
-    resetState();
+    if (message.chat.type === "group") {
+      await onMessage(message);
+      resetState();
+    }
   } catch (e) {
-    console.error(e);
+    errorsCollection.insertError(e);
   }
 });
 
@@ -96,13 +93,17 @@ async function onBotAddedToGroup(message) {
   try {
     await groupsCollection.deleteGroups(message);
     await groupsCollection.insertGroup(message);
-  } catch {}
+  } catch (e) {
+    errorsCollection.insertError(e);
+  }
 }
 
 async function onBotRemovedFromGroup(message) {
   try {
     await groupsCollection.deleteGroups(message);
-  } catch {}
+  } catch (e) {
+    errorsCollection.insertError(e);
+  }
 }
 
 async function onGroupChat(message) {
@@ -111,7 +112,9 @@ async function onGroupChat(message) {
       message.chat.id,
       messages.groupChatNotAvailable
     );
-  } catch {}
+  } catch (e) {
+    errorsCollection.insertError(e);
+  }
 }
 
 async function onStartButton(message) {
@@ -148,7 +151,7 @@ async function onStartButton(message) {
 
     await telegramBot.sendMessage(message.chat.id, messages.selectGroup, opts);
   } catch (e) {
-    console.error(e);
+    errorsCollection.insertError(e);
   }
 }
 
@@ -192,61 +195,29 @@ async function onSelectGroupButton(message, groupId) {
       messages.selectReadOrTune.replace(":field", group.message.chat.title),
       opts
     );
-  } catch {}
+  } catch (e) {
+    errorsCollection.insertError(e);
+  }
 }
 
 async function onReadButton(message, groupId) {
   try {
-    const { begin, end } = utils.getYesterday();
-    let reports = await reportsCollection.findReports({
-      groupId: parseInt(groupId),
-      begin: { $lte: begin },
-      end: { $gte: end },
-    });
+    const oneDayPeriod = utils.get1DayPeriod();
+    const sevenDaysPeriod = utils.get7DaysPeriod();
+    const thirtyDaysPeriod = utils.get30DaysPeriod();
 
-    if (!reports || reports.length === 0) {
-      const msgs = await messagesCollection.findMessages({
-        "chat.id": parseInt(groupId),
-        "chat.type": "group",
-        date: { $gte: begin, $lte: end },
-      });
+    await telegramBot.sendMessage(message.chat.id, messages.loading);
 
-      if (!msgs || msgs.length === 0) {
-        await telegramBot.sendMessage(
-          message.chat.id,
-          messages.messagesNotFound
-        );
+    const result = await getOrCreateReport(
+      groupId,
+      thirtyDaysPeriod.begin,
+      thirtyDaysPeriod.end
+    );
 
-        return;
-      } else {
-        await telegramBot.sendMessage(message.chat.id, messages.loading);
+    if (!result.reports) {
+      await telegramBot.sendMessage(message.chat.id, result.error);
 
-        const createdReport = await createReport(groupId, begin, end);
-
-        if (!createdReport) {
-          await telegramBot.sendMessage(
-            message.chat.id,
-            messages.reportsNotFound
-          );
-
-          return;
-        }
-
-        reports = await reportsCollection.findReports({
-          groupId: parseInt(groupId),
-          begin: { $lte: begin },
-          end: { $gte: end },
-        });
-
-        if (!reports || reports.length === 0) {
-          await telegramBot.sendMessage(
-            message.chat.id,
-            messages.reportsNotFound
-          );
-
-          return;
-        }
-      }
+      return;
     }
 
     const encrypt = utils.crypt(process.env.SECRET_KEY, `${groupId}`);
@@ -255,18 +226,21 @@ async function onReadButton(message, groupId) {
       message.chat.id,
       messages.read.replace(":field", `${process.env.DASHBOARD_URL}/${encrypt}`)
     );
+
+    getOrCreateReport(groupId, oneDayPeriod.begin, oneDayPeriod.end);
+    getOrCreateReport(groupId, sevenDaysPeriod.begin, sevenDaysPeriod.end);
   } catch (e) {
-    console.error(e);
+    errorsCollection.insertError(e);
   }
 }
 
 async function onTuneButton(message, groupId) {
   try {
-    const { begin, end } = utils.getYesterday();
+    const { begin, end } = utils.get30DaysPeriod();
     const reports = await reportsCollection.findReports({
       groupId: parseInt(groupId),
-      begin: { $lte: begin },
-      end: { $gte: end },
+      begin,
+      end,
     });
 
     if (!reports || reports.length === 0) {
@@ -279,7 +253,7 @@ async function onTuneButton(message, groupId) {
 
     await telegramBot.sendMessage(message.chat.id, messages.tune);
   } catch (e) {
-    console.error(e);
+    errorsCollection.insertError(e);
   }
 }
 
@@ -287,13 +261,13 @@ async function onWaitManagerResponse(message) {
   try {
     waitForManagerResponse = false;
 
-    telegramBot.sendMessage(message.chat.id, messages.loading);
+    await telegramBot.sendMessage(message.chat.id, messages.loading);
 
-    const { begin, end } = utils.getYesterday();
+    const { begin, end } = utils.get30DaysPeriod();
     const report = await reportsCollection.findReport({
       groupId: parseInt(groupId),
-      begin: { $lte: begin },
-      end: { $gte: end },
+      begin,
+      end,
     });
 
     if (!report || report.length === 0) {
@@ -302,13 +276,13 @@ async function onWaitManagerResponse(message) {
       return;
     }
 
-    const response = await getTunerResponse(
+    const response = await metisService.getTunerResponse(
       message.text,
-      report?.austin,
       report?.searle,
-      report?.sentiment,
+      report?.austin,
+      report?.distribution,
       report?.expression,
-      report?.distribution
+      report?.sentiment
     );
 
     if (response) {
@@ -334,7 +308,7 @@ async function onWaitManagerResponse(message) {
       );
     }
   } catch (e) {
-    console.error(e);
+    errorsCollection.insertError(e);
   }
 }
 
@@ -346,53 +320,106 @@ async function createReport(groupId, begin, end) {
       return false;
     }
 
-    const analysises = await analyseTags(
+    const analysises = await metisService.analyseTags(
       countTags.countSearleTags,
       countTags.countIllocutionaryTags,
       countTags.countLocutionaryTags,
+      countTags.countDistributionTags,
       countTags.countExpressionTags,
-      countTags.countSentimentTags,
-      countTags.countDistributionTags
+      countTags.countSentimentTags
     );
 
     await reportsCollection.deleteReports(groupId, begin, end);
     await reportsCollection.insertReport(
       analysises.searleAnalyse,
       analysises.austinAnalyse,
-      analysises.sentimentAnalyse,
-      analysises.expressionAnalyse,
       analysises.distributionAnalyse,
-      Math.floor(new Date().getTime() / 1000),
+      analysises.expressionAnalyse,
+      analysises.sentimentAnalyse,
       groupId,
       begin,
       end
     );
 
     return true;
-  } catch {
+  } catch (e) {
+    errorsCollection.insertError(e);
+
     return false;
   }
 }
 
 async function onMessage(message) {
   try {
-    const responses = await getMetisResponses(message.text);
-    const tags = getTags(
-      responses.austinResponse?.content,
+    const responses = await metisService.getMetisResponses(message.text);
+    const tags = metisService.getTags(
       responses.searleResponse?.content,
-      responses.sentimentResponse?.content,
+      responses.austinResponse?.content,
+      responses.distributionResponse?.content,
       responses.expressionResponse?.content,
-      responses.distributionResponse?.content
+      responses.sentimentResponse?.content
     );
-    messagesCollection.addMessage({
+    messagesCollection.insertMessage({
       ...message,
       metis_response: responses,
       tags,
     });
-  } catch {}
+  } catch (e) {
+    errorsCollection.insertError(e);
+  }
 }
 
 function resetState() {
   waitForManagerResponse = false;
   groupId = null;
+}
+
+async function getOrCreateReport(groupId, begin, end) {
+  try {
+    let reports = await reportsCollection.findReports({
+      groupId: parseInt(groupId),
+      begin,
+      end,
+    });
+
+    if (!reports || reports.length === 0) {
+      const msgs = await messagesCollection.findMessages({
+        "chat.id": parseInt(groupId),
+        "chat.type": "group",
+        date: { $gte: begin, $lte: end },
+      });
+
+      if (!msgs || msgs.length === 0) {
+        return { reports: null, error: messages.messagesNotFoundIn30DayPeriod };
+      } else {
+        const createdReport = await createReport(groupId, begin, end);
+
+        if (!createdReport) {
+          return {
+            reports: null,
+            error: messages.reportsCreatingError,
+          };
+        }
+
+        reports = await reportsCollection.findReports({
+          groupId: parseInt(groupId),
+          begin,
+          end,
+        });
+
+        if (!reports || reports.length === 0) {
+          return {
+            reports: null,
+            error: messages.reportsNotFoundIn30DayPeriod,
+          };
+        }
+      }
+    }
+
+    return { reports, error: null };
+  } catch (e) {
+    errorsCollection.insertError(e);
+
+    return { reports: null, error: messages.reportsCreatingError };
+  }
 }
